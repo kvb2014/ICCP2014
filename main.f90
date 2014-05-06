@@ -1,20 +1,22 @@
 program main
   implicit none
+!quantum evolution of 3 level system
 
   integer*4  :: i,k, loop !counters
   integer*4 :: g_duration !Duration of time evolution
-  complex*16 :: g_sigmax(2,2), g_sigmaz(2,2) !x and z Pauli matrices
-  complex*16 :: g_a, g_b !a, b = linear combination coefficients of initial condition
+  complex*16 :: g_sigmax(3,3), g_sigmaz(3,3) !x and z matrices
+  complex*16 :: g_a, g_b, g_c !a, b, c = linear combination coefficients of initial condition
   complex*16 :: g_twoi !shortkey for 2*i
-  complex*16 :: g_psi(2) !wave function vector
-  complex*16 :: g_HAM(2,2) !2x2 Hamiltonian matrix
-  complex*16 :: g_MTOP(2,2), g_MBOT(2,2) !MTOP = (2i+HAM), MBOT = inverse(2i-HAM)
-  complex*16 :: g_I(2,2) !complex-valued identity matrix
+  complex*16 :: g_psi(3) !wave function vector
+  complex*16 :: g_HAM(3,3) !3x3 Hamiltonian matrix
+  complex*16 :: g_MTOP(3,3), g_MBOT(3,3) !MTOP = (2i+HAM), MBOT = inverse(2i-HAM)
+  complex*16 :: g_I(3,3) !complex-valued identity matrix
   real*8 :: g_gamma !constant for effect of magnetic field on energy
   real*8 :: g_B0 !constant magnetic field strength 
   real*8 :: g_alpha !Driving force coupling constant
   real*8 :: g_omega !Driving frequency
   real*8 :: g_xi !pulse width constant  
+  real*8 :: g_beta !Driving force coupling constant 2
   real*8 :: g_dt, g_t0, g_t !g_dt = timestep, g_t0 = time of pulse, g_t = current time
   integer :: CL_narg
   character(len=256) :: CL_input, g_constants_file
@@ -50,6 +52,7 @@ subroutine setup_variables
   read(11,*) g_gamma
   read(11,*) g_B0
   read(11,*) g_alpha
+  read(11,*) g_beta
   read(11,*) g_omega
   read(11,*) g_xi
   read(11,*) g_t0
@@ -64,18 +67,27 @@ subroutine setup_variables
   !Define the matrices
     g_twoi = dcmplx(0d0, 2d0) !shortcut for 2*i
 
-    do i=1,2
-      do k=1,2
+  !Set identity matrix and 0s for all 3x3 matrices
+    do i=1,3
+      do k=1,3
+        g_sigmax(i,k) = 0
+        g_sigmaz(i,k) = 0
+        g_I(i,k) = 0
         if (i.eq.k) then
         g_I(i,k) = dcmplx(1d0,0d0)
-        g_sigmax(i,k) = dcmplx(0d0,0d0)
-        g_sigmaz(i,k) = dcmplx((-1d0)**(i+1),0d0)
-        else 
-        g_I(i,k) = dcmplx(0d0,0d0)
-        g_sigmax = dcmplx(1d0,0d0)
         end if
       end do
     end do
+
+  !Setting th rest of sigmaz
+    g_sigmaz(2,2) = 1
+    g_sigmaz(3,3) = 2
+    
+  !Setting the rest of sigmax
+    g_sigmax(1,2) = g_alpha
+    g_sigmax(2,1) = g_alpha
+    g_sigmax(3,2) = g_beta
+    g_sigmax(2,3) = g_beta
 
   g_HAM = -g_gamma * g_B0 * g_sigmaz & 
   + g_alpha * exp(-g_xi * (g_t - g_t0)**2) * sin(g_omega * g_t) * g_sigmax
@@ -104,18 +116,9 @@ subroutine invertComplex(A)
   end if
 
   call ZGETRF(M,M,A,M,IPIV,info)
-  if(info .eq. 0) then
-    write(*,*)"succeded"
-  else
-   write(*,*)"failed"
-  end if
 
   call ZGETRI(M,A,M,IPIV,WORK,M,info)
-  if(info .eq. 0) then
-    write(*,*)"succeded"
-  else
-   write(*,*)"failed"
-  end if
+
   deallocate(IPIV, WORK, stat=error)
   if (error.ne.0)then
     print *,"error:fail to release"
@@ -125,12 +128,13 @@ subroutine invertComplex(A)
 end subroutine invertComplex
 
 subroutine calcPsi()
-  complex*16 :: M(2,2)
+  complex*16 :: M(3,3)
   integer*4 :: i
 
-  g_psi(1) = g_a / sqrt(abs(g_a)**2 + abs(g_b)**2)
-  g_psi(2) = g_b / sqrt(abs(g_a)**2 + abs(g_b)**2)
-  
+  g_psi(1) = g_a / sqrt(abs(g_a)**2 + abs(g_b)**2 + abs(g_c)**2)
+  g_psi(2) = g_b / sqrt(abs(g_a)**2 + abs(g_b)**2 + abs(g_c)**2)
+  g_psi(3) = g_c / sqrt(abs(g_a)**2 + abs(g_b)**2 + abs(g_c)**2)
+
   open(unit = 20,file = 'data.txt')
   !open(unit = 21, file = 'inverses.txt')
   !open(unit = 22, file = 'M.txt')
