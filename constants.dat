@@ -1,0 +1,9 @@
+1.0       Magnetic field energy coupling (gamma)
+1.0    	  Magnetic field strength (B0)
+1.0       Forcing function coupling constants (alpha)
+1.0       Driving force frequence (omega)
+1.0       Pulse width (xi)
+0.0    	  Starting time of the pulse (t0)
+0.01   	  Timestep (Delta t)
+0.0		    Starting time (t=0)
+0         end of file
