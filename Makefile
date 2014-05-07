@@ -3,7 +3,7 @@ FFLAGS = -Wall -Wextra -O3 -ffast-math
 LDFlAGS = 
 LIBS =  -llapack
 
-PROGRAMS = main
+PROGRAMS = twolevel
 
 OBJS =
 #OBJS += plot.o
