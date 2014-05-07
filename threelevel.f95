@@ -1,4 +1,4 @@
-program twolevel
+program threelevel
 
    implicit none
    
@@ -33,8 +33,10 @@ program twolevel
 contains
 
    subroutine calcPsi
-      complex*16 :: up(2) = (/dcmplx(0d0,0d0), dcmplx(1d0,0d0)/)
-      complex*16 :: down(2) = (/dcmplx(1d0,0d0), dcmplx(0d0,0d0)/), ii=cmplx(0._8,1._8)
+      complex*16 :: ground(3) = (/dcmplx(1d0,0d0), dcmplx(0d0,0d0), dcmplx(0d0,0d0)/)
+      complex*16 :: excited(3) = (/dcmplx(0d0,0d0), dcmplx(1d0,0d0), dcmplx(0d0,0d0)/)
+      complex*16 :: leak(3) = (/dcmplx(0d0,0d0), dcmplx(0d0,0d0), dcmplx(1d0,0d0)/)
+      complex*16 :: ii=cmplx(0._8,1._8)
 
       g_Ham = g_omega0/2d0 * g_sigmaz + g_period1 * sin(g_freq * g_t) * g_sigmay &
          + g_period2 * cos(g_freq * g_t) * g_sigmax   
@@ -53,7 +55,9 @@ contains
       
       g_psi = matmul(g_Ham,g_psi)
       
-      print *, dble(g_psi(1)*conjg(g_psi(1)))
+      print *, abs(dot_product(ground,g_psi))**2d0, &
+               abs(dot_product(excited,g_psi))**2d0, &
+               abs(dot_product(leak,g_psi))**2d0
       
    end subroutine calcPsi
    
@@ -75,7 +79,7 @@ contains
      
       g_unity(1,:)   = (/ dcmplx(1d0,0d0), dcmplx(0d0,0d0), dcmplx(0d0,0d0)/)
       g_unity(2,:)   = (/ dcmplx(0d0,0d0), dcmplx(1d0,0d0), dcmplx(0d0,0d0)/)
-      g_unity(2,:)   = (/ dcmplx(0d0,0d0), dcmplx(0d0,0d0), dcmplx(1d0,0d0)/)
+      g_unity(3,:)   = (/ dcmplx(0d0,0d0), dcmplx(0d0,0d0), dcmplx(1d0,0d0)/)
       
       !- Define the simulation constants
       g_omega0       = dcmplx(1d0,0d0);
