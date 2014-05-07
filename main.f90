@@ -4,7 +4,7 @@ program main
 
   integer*4  :: i,k, loop !counters
   integer*4 :: g_duration !Duration of time evolution
-  complex*16 :: g_sigmax(3,3), g_sigmaz(3,3) !x and z matrices
+  complex*16 :: g_sigmax(3,3), g_sigmaz(3,3), g_sigmay(3,3) !x, z and y are 3x3 matrices
   complex*16 :: g_a, g_b, g_c !a, b, c = linear combination coefficients of initial condition
   complex*16 :: g_twoi !shortkey for 2*i
   complex*16 :: g_psi(3) !wave function vector
@@ -72,6 +72,7 @@ subroutine setup_variables
       do k=1,3
         g_sigmax(i,k) = 0
         g_sigmaz(i,k) = 0
+        g_sigmay(i,k) = 0
         g_I(i,k) = 0
         if (i.eq.k) then
         g_I(i,k) = dcmplx(1d0,0d0)
@@ -80,17 +81,27 @@ subroutine setup_variables
     end do
 
   !Setting th rest of sigmaz
-    g_sigmaz(2,2) = 1
-    g_sigmaz(3,3) = 2
+    g_sigmaz(2,2) = dcmplx(1d0,0d0)
+    g_sigmaz(3,3) = dcmplx(2d0,0d0)
     
   !Setting the rest of sigmax
-    g_sigmax(1,2) = g_alpha
-    g_sigmax(2,1) = g_alpha
-    g_sigmax(3,2) = g_beta
-    g_sigmax(2,3) = g_beta
+    g_sigmax(1,2) = dcmplx(g_alpha,0d0)
+    g_sigmax(2,1) = dcmplx(g_alpha,0d0)
+    g_sigmax(3,2) = dcmplx(g_beta,0d0)
+    g_sigmax(2,3) = dcmplx(g_beta,0d0)
 
+  !Setting the rest of sigmay
+    g_sigmax(1,2) = dcmplx(0d0,-g_alpha)
+    g_sigmax(2,1) = dcmplx(0d0,g_alpha)
+    g_sigmax(3,2) = dcmplx(0d0,g_beta)
+    g_sigmax(2,3) = dcmplx(0d0,-g_beta)
+  !Hamiltonian at initial time
+  !Start with lowest energy level
   g_HAM = -g_gamma * g_B0 * g_sigmaz & 
-  + g_alpha * exp(-g_xi * (g_t - g_t0)**2) * sin(g_omega * g_t) * g_sigmax
+  !The first qutrit
+  + exp(-g_xi * (g_t - g_t0)**2) * sin(g_omega * g_t) * g_sigmax &
+  !The second qutrit
+  + exp(-g_xi * (g_t - g_t0)**2) * cos(g_omega * g_t) * g_sigmay
   
   g_MTOP = g_twoi*g_I + g_HAM
 
@@ -150,7 +161,10 @@ subroutine calcPsi()
     !write(23, *) g_psi(1), ' ', g_psi(2)
     !write(24, *) g_MTOP(1,1), ' ', g_MTOP(1,2), ' ', g_MTOP(2,1), ' ', g_MTOP(2,2)
 
-    g_HAM = -g_gamma * g_B0 * g_sigmaz + g_alpha * exp(-g_xi * (g_t - g_t0)**2) * sin(g_omega * g_t) * g_sigmax
+    g_HAM = -g_gamma * g_B0 * g_sigmaz & 
+    + exp(-g_xi * (g_t - g_t0)**2) * sin(g_omega * g_t) * g_sigmax &
+    + exp(-g_xi * (g_t - g_t0)**2) * cos(g_omega * g_t) * g_sigmay
+
     g_MBOT = g_twoi * g_I - g_HAM
     call invertComplex(g_MBOT)
 
