@@ -36,15 +36,29 @@ program threelevel
    
    complex*16 :: ii=dcmplx(0._8,1._8) ! Complex 'i'
    
+   !-- Dummy testing stuff
+   complex*16 :: g_zero_one(9), g_zero_two(9) 
+   complex*16 :: g_one_one(9), g_one_two(9)
+   real*8     :: expect_rho(4)
+   
    open(11,file='psi1.dat')
    open(12,file='psi2.dat')
    open(13,file='omega.dat')
+   open(14,file='rho.dat')
    
    call setUpVariables()
+      
    do i = 1,g_duration
+      
+      if(modulo(i,100)==0) then
+         call expectDensityMatrix()
+      end if
       call calcPsi()
-      call printOut()
+!       call printOut()
       call writeOut()
+      
+!       print *, i
+      
    end do
    
    close(11)
@@ -106,7 +120,7 @@ contains
       real*8 :: A,B,C,D ! Holding variables for OmegaY
       
       sig = g_tg / 6d0
-      wx = g_delta / 2d0
+      wx = g_sdelta * pi!/ 2d0
       beta = - 1d0 / (2d0 * g_delta)
       
       A = (g_Api * exp( -(t - g_tg/2d0) ** 2d0 / (2d0 * sig**2d0) ) )
@@ -162,6 +176,7 @@ contains
    end subroutine writeOut
    
    subroutine setUpVariables
+      complex*16 :: zero(3), one(3), two(3) ! The Basis States
       
       !- Define the simulation constants
       ! All times are defines in ns; Therefore all frequencies are in GHz
@@ -171,7 +186,7 @@ contains
       g_sdelta       = dcmplx(45E-3,0d0)*2d0*pi      ! ∂/2π   = 45 MHz
       g_lamb1        = dcmplx(1d0,0d0)               ! λ1     = 1
       g_lamb2        = dcmplx(sqrt(2d0),0d0)         ! λ2     = √2
-      g_tg           = 20d0                          ! gt     = 17 ns
+      g_tg           = 24d0                          ! gt     = 17 ns
       
       g_Am           = 0.9d0
       g_Api          = 1d0
@@ -208,13 +223,23 @@ contains
       !- Define the time-related variables
       g_dt  = .01d0 ! Timestep in nanoseconds
       g_t   = 0d0
-      g_duration = 10000
+      g_duration = 5000
       
       !- Set up the inital wavefunction (the up state)
-      g_psi(:,1) = (/ dcmplx(1d0,0d0), dcmplx(0d0,0d0), dcmplx(0d0,0d0)/)
+      g_psi(:,1) = (/ dcmplx(0d0,0d0), dcmplx(1d0,0d0), dcmplx(0d0,0d0)/)
       g_psi(:,2) = (/ dcmplx(1d0,0d0), dcmplx(0d0,0d0), dcmplx(0d0,0d0)/)
       !- Set up the inital wavefunction (the down state)
       !g_psi = (/ dcmplx(1d0,0d0), dcmplx(0d0,0d0) /)
+      
+      !- Set all the possible basis states
+      zero  = (/ dcmplx(1d0,0d0), dcmplx(0d0,0d0), dcmplx(0d0,0d0)/)
+      one   = (/ dcmplx(0d0,0d0), dcmplx(1d0,0d0), dcmplx(0d0,0d0)/)
+      two   = (/ dcmplx(0d0,0d0), dcmplx(0d0,0d0), dcmplx(1d0,0d0)/)
+      
+      call tensorProduct(zero,one,g_zero_one)
+      call tensorProduct(zero,two,g_zero_two)
+      call tensorProduct(one,one,g_one_one)
+      call tensorProduct(one,two,g_one_two)
       
    end subroutine setUpVariables
    
@@ -245,5 +270,60 @@ contains
 
    end subroutine invertComplex
    
+   subroutine tensorProduct(a,b,c)
+      complex*16, intent(in) :: a(:),b(:)
+      complex*16, intent(out) :: c(:)
+      integer*4 :: k
+      integer*4 :: sz
+      
+      sz = size(a,dim=1)
+      
+      do k=0,sz-1
+         c(k*sz+1:(k+1)* sz) = a(k+1) * b
+      end do
+      
+   end subroutine tensorProduct
+   
+   subroutine calcDensityMatrix(a,b,rho)
+      complex*16, intent(in) :: a(:),b(:)
+      complex*16, intent(out) :: rho(:,:)
+      integer*4 :: k
+      integer*4 :: sz
+      
+      sz = size(a,dim=1)
+      
+      do k=1,sz
+         rho(k,:) = a(k) * conjg(b)
+      end do
+      
+   end subroutine calcDensityMatrix
+   
+   subroutine expectDensityMatrix
+      complex*16 :: c(9), rho(9,9)
+      complex*16 :: tr
+      integer*4 :: k,l
+      
+      call tensorProduct(g_psi(:,2),g_psi(:,1),c)
+      call calcDensityMatrix(c,c,rho)
+      
+      do k=1,9
+         do l=1,9
+            write(14, *) realpart(rho(k,l))
+         end do
+      end do
+      
+   end subroutine expectDensityMatrix
+   
+   subroutine trace(A,tr)
+      complex*16, intent(in) :: A(:,:)
+      complex*16, intent(out) :: tr
+      
+      tr = dcmplx(0d0,0d0)
+      
+      do i=0,size(A,dim=1)
+         tr = tr + A(i,i)
+      end do
+      
+   end subroutine trace
 
 end program threelevel
